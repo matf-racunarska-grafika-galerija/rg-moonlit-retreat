@@ -287,12 +287,6 @@ int main() {
             1.0f, -1.0f,  1.0f
     };
 
-    // positions of the point lights
-    glm::vec3 pointLightPositions[] = {
-            glm::vec3(1.05f, 1.95f, -0.46f),
-            glm::vec3(-1.36f, 1.93f, -0.17f)
-    };
-
     // transparent VAO
     unsigned int transparentVAO, transparentVBO;
     glGenVertexArrays(1, &transparentVAO);
@@ -374,6 +368,7 @@ int main() {
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         // don't forget to enable shader before setting uniforms
+
         objShader.use();
         objShader.setVec3("viewPos", programState->camera.Position);
         objShader.setFloat("material.shininess", 32.0f);
@@ -382,8 +377,32 @@ int main() {
         waterShader.setBool("celShading", false);
         sourceShader.setBool("celShading", false);
 
+        // view/projection transformations
+        glm::mat4 projection = glm::perspective(glm::radians(programState->camera.Zoom),
+                                                (float) SCR_WIDTH / (float) SCR_HEIGHT, 0.1f, 100.0f);
+        glm::mat4 view = programState->camera.GetViewMatrix();
+        objShader.setMat4("projection", projection);
+        objShader.setMat4("view", view);
+
+        // transformation matrices for the lanterns and the lights
+
+        glm::mat4 transMat1 = glm::mat4(1.0f);
+        transMat1 = glm::translate(transMat1, glm::vec3(1.05f, 1.95f, -0.46f));
+        transMat1 = glm::scale(transMat1, glm::vec3(0.08f, 0.08f, 0.08f));
+        transMat1 = glm::rotate(transMat1, sin(currentFrame*2)*glm::radians(60.0f), glm::vec3(0,0,1));
+        transMat1 = glm::translate(transMat1, glm::vec3(0.0f, -3.0f, 0.0f));
+
+        glm::mat4 transMat2 = glm::mat4(1.0f);
+        transMat2 = glm::translate(transMat2, glm::vec3(-1.85f, 1.95f, 0.56f));
+        transMat2 = glm::scale(transMat2, glm::vec3(0.08f, 0.08f, 0.08f));
+        transMat2 = glm::rotate(transMat2, sin(0.6f+currentFrame*2)*glm::radians(60.0f), glm::vec3(0,0,1));
+        transMat2 = glm::translate(transMat2, glm::vec3(0.0f, -3.0f, 0.0f));
+
+        glm::vec3 pos0 = transMat1 * glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
+        glm::vec3 pos1 = transMat2 * glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
+
         /*
-           Here we set all the uniforms for the 5/6 types of lights we have. We have to set them manually and index 
+           Here we set all the uniforms for the 5/6 types of lights we have. We have to set them manually and index
            the proper PointLight struct in the array to set each uniform variable. This can be done more code-friendly
            by defining light types as classes and set their values in there, or by using a more efficient uniform approach
            by using 'Uniform buffer objects', but that is something we'll discuss in the 'Advanced GLSL' tutorial.
@@ -396,22 +415,23 @@ int main() {
 
         // point light 1
 
-        objShader.setVec3("pointLights[0].position", pointLightPositions[0]);
+        objShader.setVec3("pointLights[0].position", pos0);
         objShader.setVec3("pointLights[0].ambient", 0.10f, 0.05f, 0.05f);
         objShader.setVec3("pointLights[0].diffuse", 0.8f, 0.6f, 0.6f);
         objShader.setVec3("pointLights[0].specular", 1.0f, 1.0f, 0.0f);
         objShader.setFloat("pointLights[0].constant", 1.0f);
         objShader.setFloat("pointLights[0].linear", 0.09);
         objShader.setFloat("pointLights[0].quadratic", 0.032);
-        // point light 2
 
-        objShader.setVec3("pointLights[1].position", pointLightPositions[1]);
+        // point light 2
+        objShader.setVec3("pointLights[1].position", pos1);
         objShader.setVec3("pointLights[1].ambient", 0.10f, 0.05f, 0.05f);
         objShader.setVec3("pointLights[1].diffuse", 0.8f, 0.6f, 0.6f);
         objShader.setVec3("pointLights[1].specular", 1.0f, 1.0f, 0.0f);
         objShader.setFloat("pointLights[1].constant", 1.0f);
         objShader.setFloat("pointLights[1].linear", 0.09);
         objShader.setFloat("pointLights[1].quadratic", 0.032);
+
         // spotLight
         objShader.setVec3("spotLight.position", programState->camera.Position);
         objShader.setVec3("spotLight.direction", programState->camera.Front);
@@ -430,12 +450,7 @@ int main() {
         objShader.setFloat("spotLight.cutOff", glm::cos(glm::radians(12.5f)));
         objShader.setFloat("spotLight.outerCutOff", glm::cos(glm::radians(15.0f)));
 
-        // view/projection transformations
-        glm::mat4 projection = glm::perspective(glm::radians(programState->camera.Zoom),
-                                                (float) SCR_WIDTH / (float) SCR_HEIGHT, 0.1f, 100.0f);
-        glm::mat4 view = programState->camera.GetViewMatrix();
-        objShader.setMat4("projection", projection);
-        objShader.setMat4("view", view);
+
 
         // render the loaded model
         glm::mat4 model = glm::mat4(1.0f);
@@ -489,21 +504,8 @@ int main() {
         objShader.setMat4("model", model);
         support_beam.Draw(objShader);
 
-        glm::mat4 chinese_lanternmodel = glm::mat4(1.0f);
-        chinese_lanternmodel = glm::translate(chinese_lanternmodel, glm::vec3(1.05f, 1.95f, -0.46f));
-        chinese_lanternmodel = glm::scale(chinese_lanternmodel, glm::vec3(0.08f, 0.08f, 0.08f));
-        chinese_lanternmodel = glm::rotate(chinese_lanternmodel, sin(currentFrame*2)*glm::radians(40.0f), glm::vec3(0,0,1));
-        chinese_lanternmodel = glm::translate(chinese_lanternmodel, glm::vec3(0.0f, -3.0f, 0.0f));
-        objShader.setMat4("model", chinese_lanternmodel);
-        chinese_lantern.Draw(sourceShader);
 
-        chinese_lanternmodel = glm::mat4(1.0f);
-        chinese_lanternmodel = glm::translate(chinese_lanternmodel, glm::vec3(-1.85f, 1.95f, 0.56f));
-        chinese_lanternmodel = glm::scale(chinese_lanternmodel, glm::vec3(0.08f, 0.08f, 0.08f));
-        chinese_lanternmodel = glm::rotate(chinese_lanternmodel, sin(0.6f+currentFrame*2)*glm::radians(40.0f), glm::vec3(0,0,1));
-        chinese_lanternmodel = glm::translate(chinese_lanternmodel, glm::vec3(0.0f, -3.0f, 0.0f));
-        objShader.setMat4("model", chinese_lanternmodel);
-        chinese_lantern.Draw(sourceShader);
+
 
         model = glm::mat4(1.0f);
         model = glm::translate(model, glm::vec3(-2.51f, 0.97f, -0.76f));
@@ -542,8 +544,30 @@ int main() {
         x.Draw(objShader);
          */
 
-        //object shading end, start of water shading
+        //object shading end, start of light source shading
 
+        sourceShader.use();
+        sourceShader.setMat4("projection", projection);
+        sourceShader.setMat4("view", view);
+
+        sourceShader.setBool("celShading", false);
+//        glm::mat4 chinese_lanternmodel = glm::mat4(1.0f);
+//        chinese_lanternmodel = glm::translate(chinese_lanternmodel, glm::vec3(1.05f, 1.95f, -0.46f));
+//        chinese_lanternmodel = glm::scale(chinese_lanternmodel, glm::vec3(0.08f, 0.08f, 0.08f));
+//        chinese_lanternmodel = glm::rotate(chinese_lanternmodel, sin(currentFrame*2)*glm::radians(40.0f), glm::vec3(0,0,1));
+//        chinese_lanternmodel = glm::translate(chinese_lanternmodel, glm::vec3(0.0f, -3.0f, 0.0f));
+        sourceShader.setMat4("model", transMat1);
+        chinese_lantern.Draw(sourceShader);
+
+//        chinese_lanternmodel = glm::mat4(1.0f);
+//        chinese_lanternmodel = glm::translate(chinese_lanternmodel, glm::vec3(-1.85f, 1.95f, 0.56f));
+//        chinese_lanternmodel = glm::scale(chinese_lanternmodel, glm::vec3(0.08f, 0.08f, 0.08f));
+//        chinese_lanternmodel = glm::rotate(chinese_lanternmodel, sin(0.6f+currentFrame*2)*glm::radians(40.0f), glm::vec3(0,0,1));
+//        chinese_lanternmodel = glm::translate(chinese_lanternmodel, glm::vec3(0.0f, -3.0f, 0.0f));
+        sourceShader.setMat4("model", transMat2);
+        chinese_lantern.Draw(sourceShader);
+
+        //lightsource shading end, start of water shading
         std::map<float, glm::vec3> sorted;
         for (unsigned int i = 0; i < waterSquares.size(); i++)
         {
@@ -562,7 +586,7 @@ int main() {
         waterShader.setVec3("light.specular", 1.0f, 1.0f, 1.0f);
 
         // material properties
-        waterShader.setFloat("material.shininess", 32.0f);
+        waterShader.setFloat("material.shininess", 64.0f);
 
         waterShader.setVec3("light.direction", -0.2f, -1.0f, -0.3f);
         waterShader.setVec3("viewPos", programState->camera.Position);
