@@ -9,7 +9,7 @@ uniform sampler2D texture1;
 void main()
 {
     vec4 result = texture(texture1, TexCoords);
-    result.w = 0.6;
+    result.w = 0.8;
 
     // distance darkening
     float dist = length(FragPos);
@@ -22,6 +22,6 @@ void main()
     result.y -= (result.y*pow(dist,1.75))/940.0;
     result.z -= (result.z*pow(dist,1.75))/940.0;
 
-    if(dist>50.0) result = vec4(0.0, 0.0, 0.0, 0.6);
+    if(dist>50.0) result = vec4(0.0, 0.0, 0.0, 0.8);
     FragColor = vec4(result);
 }

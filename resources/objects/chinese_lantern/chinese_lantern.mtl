@@ -1,0 +1,40 @@
+# Blender MTL File: 'None'
+# Material Count: 3
+
+newmtl Material.001
+Ns 249.019608
+Ka 1.000000 1.000000 1.000000
+Kd 0.640000 0.640000 0.640000
+Ks 0.400000 0.400000 0.400000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 1.000000
+illum 2
+map_Bump ChineseLanternLP2_Material.001_Normal.png
+map_Ks ChineseLanternLP2_Material.001_MetallicSmo.png
+map_Kd ChineseLanternLP2_Material.001_AlbedoTrans.png
+
+newmtl Material.002
+Ns 249.019608
+Ka 1.000000 1.000000 1.000000
+Kd 0.640000 0.640000 0.640000
+Ks 0.400000 0.400000 0.400000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 1.000000
+illum 2
+map_Bump ChineseLanternLP2_Material.002_Normal.png
+map_Ks ChineseLanternLP2_Material.002_MetallicSmo.png
+map_Kd ChineseLanternLP2_Material.002_AlbedoTrans.png
+
+newmtl Material.003
+Ns 249.019608
+Ka 1.000000 1.000000 1.000000
+Kd 0.640000 0.640000 0.640000
+Ks 0.400000 0.400000 0.400000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 1.000000
+illum 2
+map_Kd RopeLight.png
+map_Bump ChineseLanternRope_Material.003_Normal.png

@@ -42,7 +42,7 @@ struct SpotLight {
     vec3 specular;
 };
 
-#define NR_POINT_LIGHTS 1
+#define NR_POINT_LIGHTS 2
 
 in vec3 FragPos;
 in vec3 Normal;
@@ -53,9 +53,10 @@ uniform DirLight dirLight;
 uniform PointLight pointLights[NR_POINT_LIGHTS];
 uniform SpotLight spotLight;
 uniform Material material;
+uniform bool celShading;
 
 // function prototypes
-vec3 CalcDirLight(DirLight light, vec3 normal, vec3 viewDir);
+vec3 CalcDirLight(DirLight light, vec3 normal, vec3 viewDir, vec3 FragPos);
 vec3 CalcPointLight(PointLight light, vec3 normal, vec3 fragPos, vec3 viewDir);
 vec3 CalcSpotLight(SpotLight light, vec3 normal, vec3 fragPos, vec3 viewDir);
 
@@ -72,18 +73,53 @@ void main()
     // this fragment's final color.
     // == =====================================================
     // phase 1: directional lighting
-    vec3 result = CalcDirLight(dirLight, norm, viewDir);
+    vec3 result = CalcDirLight(dirLight, norm, viewDir, FragPos);
     // phase 2: point lights
     for(int i = 0; i < NR_POINT_LIGHTS; i++)
         result += CalcPointLight(pointLights[i], norm, FragPos, viewDir);
     // phase 3: spot light
     result += CalcSpotLight(spotLight, norm, FragPos, viewDir);
 
+    if(celShading){
+        if(result.x > 0.9) result.x = 0.9;
+        else if(result.x > 0.8 && result.x < 0.9) result.x = 0.8;
+        else if(result.x > 0.7 && result.x < 0.8) result.x = 0.7;
+        else if(result.x > 0.6 && result.x < 0.7) result.x = 0.6;
+        else if(result.x > 0.5 && result.x < 0.6) result.x = 0.5;
+        else if(result.x > 0.4 && result.x < 0.5) result.x = 0.4;
+        else if(result.x > 0.3 && result.x < 0.4) result.x = 0.3;
+        else if(result.x > 0.2 && result.x < 0.3) result.x = 0.2;
+        else if(result.x > 0.1 && result.x < 0.2) result.x = 0.1;
+        else if(result.x < 0.1) result.x = 0.0;
+
+        if(result.y > 0.9) result.y = 0.9;
+        else if(result.y > 0.8 && result.y < 0.9) result.y = 0.8;
+        else if(result.y > 0.7 && result.y < 0.8) result.y = 0.7;
+        else if(result.y > 0.6 && result.y < 0.7) result.y = 0.6;
+        else if(result.y > 0.5 && result.y < 0.6) result.y = 0.5;
+        else if(result.y > 0.4 && result.y < 0.5) result.y = 0.4;
+        else if(result.y > 0.3 && result.y < 0.4) result.y = 0.3;
+        else if(result.y > 0.2 && result.y < 0.3) result.y = 0.2;
+        else if(result.y > 0.1 && result.y < 0.2) result.y = 0.1;
+        else if(result.y < 0.1) result.y = 0.0;
+
+        if(result.z > 0.9) result.z = 0.9;
+        else if(result.z > 0.8 && result.z < 0.9) result.z = 0.8;
+        else if(result.z > 0.7 && result.z < 0.8) result.z = 0.7;
+        else if(result.z > 0.6 && result.z < 0.7) result.z = 0.6;
+        else if(result.z > 0.5 && result.z < 0.6) result.z = 0.5;
+        else if(result.z > 0.4 && result.z < 0.5) result.z = 0.4;
+        else if(result.z > 0.3 && result.z < 0.4) result.z = 0.3;
+        else if(result.z > 0.2 && result.z < 0.3) result.z = 0.2;
+        else if(result.z > 0.1 && result.z < 0.2) result.z = 0.1;
+        else if(result.z < 0.1) result.z = 0.0;
+    }
+
     FragColor = vec4(result, 1.0);
 }
 
 // calculates the color when using a directional light.
-vec3 CalcDirLight(DirLight light, vec3 normal, vec3 viewDir)
+vec3 CalcDirLight(DirLight light, vec3 normal, vec3 viewDir, vec3 FragPos)
 {
     vec3 lightDir = normalize(-light.direction);
     // diffuse shading
@@ -95,7 +131,20 @@ vec3 CalcDirLight(DirLight light, vec3 normal, vec3 viewDir)
     vec3 ambient = light.ambient * vec3(texture(material.diffuse, TexCoords));
     vec3 diffuse = light.diffuse * diff * vec3(texture(material.diffuse, TexCoords));
     vec3 specular = light.specular * spec * vec3(texture(material.specular, TexCoords));
-    return (ambient + diffuse + specular);
+
+    vec3 result = ambient + diffuse + specular;
+
+    if(FragPos.y < 1.0){
+        float dist = length(FragPos);
+
+        result.x -= (result.x*pow(dist,1.75))/940.0;
+        result.y -= (result.y*pow(dist,1.75))/940.0;
+        result.z -= (result.z*pow(dist,1.75))/940.0;
+
+        if(dist>50.0) result = vec3(0.0, 0.0, 0.0);
+    }
+
+    return (result);
 }
 
 // calculates the color when using a point light.
@@ -143,5 +192,6 @@ vec3 CalcSpotLight(SpotLight light, vec3 normal, vec3 fragPos, vec3 viewDir)
     ambient *= attenuation * intensity;
     diffuse *= attenuation * intensity;
     specular *= attenuation * intensity;
+
     return (ambient + diffuse + specular);
 }

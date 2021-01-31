@@ -65,6 +65,10 @@ struct ProgramState {
     glm::vec3 bardPosition;
     float bardScale;
     PointLight pointLight;
+    bool spotlight = false;
+    glm::vec3 tempPosition;
+    float tempScale;
+    float tempRotation;
     ProgramState()
             : camera(glm::vec3(0.0f, 0.0f, 3.0f)) {}
 
@@ -75,10 +79,7 @@ struct ProgramState {
 
 void ProgramState::SaveToFile(std::string filename) {
     std::ofstream out(filename);
-    out << clearColor.r << '\n'
-        << clearColor.g << '\n'
-        << clearColor.b << '\n'
-        << ImGuiEnabled << '\n'
+    out << ImGuiEnabled << '\n'
         << camera.Position.x << '\n'
         << camera.Position.y << '\n'
         << camera.Position.z << '\n'
@@ -89,16 +90,19 @@ void ProgramState::SaveToFile(std::string filename) {
         << bardPosition.x << '\n'
         << bardPosition.y << '\n'
         << bardPosition.z << '\n'
-        << bardScale << '\n';
+        << bardScale << '\n'
+        << spotlight << '\n'
+        << tempPosition.x << '\n'
+        << tempPosition.y << '\n'
+        << tempPosition.z << '\n'
+        << tempScale << '\n'
+        << tempRotation << '\n';
 }
 
 void ProgramState::LoadFromFile(std::string filename) {
     std::ifstream in(filename);
     if (in) {
-        in >> clearColor.r
-           >> clearColor.g
-           >> clearColor.b
-           >> ImGuiEnabled
+        in >> ImGuiEnabled
            >> camera.Position.x
            >> camera.Position.y
            >> camera.Position.z
@@ -109,7 +113,13 @@ void ProgramState::LoadFromFile(std::string filename) {
            >> bardPosition.x
            >> bardPosition.y
            >> bardPosition.z
-           >> bardScale;
+           >> bardScale
+           >> spotlight
+           >> tempPosition.x
+           >> tempPosition.y
+           >> tempPosition.z
+           >> tempScale
+           >> tempRotation;
     }
 }
 
@@ -184,6 +194,7 @@ int main() {
     Shader objShader("resources/shaders/object_lighting.vs", "resources/shaders/object_lighting.fs");
     Shader waterShader("resources/shaders/water_lighting.vs", "resources/shaders/water_lighting.fs");
     Shader skyboxShader("resources/shaders/skybox.vs", "resources/shaders/skybox.fs");
+    Shader sourceShader("resources/shaders/light_source.vs", "resources/shaders/light_source.fs");
 
     // load models
     // -----------
@@ -193,6 +204,19 @@ int main() {
     island.SetShaderTextureNamePrefix("material.");
     Model mountainisland("resources/objects/mountainisland/mountain.obj");
     mountainisland.SetShaderTextureNamePrefix("material.");
+    Model sand_terrain("resources/objects/sand_terrain/sand_terrain.obj");
+    sand_terrain.SetShaderTextureNamePrefix("material.");
+    Model support_beam("resources/objects/support_beam/support_beam.obj");
+    support_beam.SetShaderTextureNamePrefix("material.");
+    Model chinese_lantern("resources/objects/chinese_lantern/chinese_lantern.obj");
+    chinese_lantern.SetShaderTextureNamePrefix("material.");
+    Model boat("resources/objects/boat/boat.obj");
+    boat.SetShaderTextureNamePrefix("material.");
+    Model barrel("resources/objects/barrel/barrel.obj");
+    barrel.SetShaderTextureNamePrefix("material.");
+    Model cliffs("resources/objects/cliffs/cliffs.obj");
+    cliffs.SetShaderTextureNamePrefix("material.");
+
 
     PointLight& pointLight = programState->pointLight;
     pointLight.position = glm::vec3(4.0f, 4.0, 0.0);
@@ -265,7 +289,8 @@ int main() {
 
     // positions of the point lights
     glm::vec3 pointLightPositions[] = {
-            glm::vec3( 0.0f,  2.0f,  0.0f)
+            glm::vec3(1.05f, 1.95f, -0.46f),
+            glm::vec3(-1.36f, 1.93f, -0.17f)
     };
 
     // transparent VAO
@@ -352,6 +377,10 @@ int main() {
         objShader.use();
         objShader.setVec3("viewPos", programState->camera.Position);
         objShader.setFloat("material.shininess", 32.0f);
+        objShader.setBool("celShading", false);
+        skyboxShader.setBool("celShading", false);
+        waterShader.setBool("celShading", false);
+        sourceShader.setBool("celShading", false);
 
         /*
            Here we set all the uniforms for the 5/6 types of lights we have. We have to set them manually and index 
@@ -364,29 +393,37 @@ int main() {
         objShader.setVec3("dirLight.ambient", 0.05f, 0.05f, 0.20f);
         objShader.setVec3("dirLight.diffuse", 0.4f, 0.4f, 0.6f);
         objShader.setVec3("dirLight.specular", 0.5f, 0.5f, 0.7f);
+
         // point light 1
+
         objShader.setVec3("pointLights[0].position", pointLightPositions[0]);
-        objShader.setVec3("pointLights[0].ambient", 0.05f, 0.05f, 0.05f);
-        objShader.setVec3("pointLights[0].diffuse", 0.8f, 0.8f, 0.8f);
-        objShader.setVec3("pointLights[0].specular", 1.0f, 1.0f, 1.0f);
+        objShader.setVec3("pointLights[0].ambient", 0.10f, 0.05f, 0.05f);
+        objShader.setVec3("pointLights[0].diffuse", 0.8f, 0.6f, 0.6f);
+        objShader.setVec3("pointLights[0].specular", 1.0f, 1.0f, 0.0f);
         objShader.setFloat("pointLights[0].constant", 1.0f);
         objShader.setFloat("pointLights[0].linear", 0.09);
         objShader.setFloat("pointLights[0].quadratic", 0.032);
         // point light 2
-        /*
+
         objShader.setVec3("pointLights[1].position", pointLightPositions[1]);
-        objShader.setVec3("pointLights[1].ambient", 0.05f, 0.05f, 0.05f);
-        objShader.setVec3("pointLights[1].diffuse", 0.8f, 0.8f, 0.8f);
-        objShader.setVec3("pointLights[1].specular", 1.0f, 1.0f, 1.0f);
+        objShader.setVec3("pointLights[1].ambient", 0.10f, 0.05f, 0.05f);
+        objShader.setVec3("pointLights[1].diffuse", 0.8f, 0.6f, 0.6f);
+        objShader.setVec3("pointLights[1].specular", 1.0f, 1.0f, 0.0f);
         objShader.setFloat("pointLights[1].constant", 1.0f);
         objShader.setFloat("pointLights[1].linear", 0.09);
-        objShader.setFloat("pointLights[1].quadratic", 0.032);*/
+        objShader.setFloat("pointLights[1].quadratic", 0.032);
         // spotLight
         objShader.setVec3("spotLight.position", programState->camera.Position);
         objShader.setVec3("spotLight.direction", programState->camera.Front);
         objShader.setVec3("spotLight.ambient", 0.0f, 0.0f, 0.0f);
-        objShader.setVec3("spotLight.diffuse", 0.0f, 0.0f, 0.0f);
-        objShader.setVec3("spotLight.specular", 0.0f, 0.0f, 0.0f);
+        if(programState->spotlight) {
+            objShader.setVec3("spotLight.diffuse", 1.0f, 1.0f, 1.0f);
+            objShader.setVec3("spotLight.specular", 1.0f, 1.0f, 1.0f);
+        }
+        else{
+            objShader.setVec3("spotLight.diffuse", 0.0f, 0.0f, 0.0f);
+            objShader.setVec3("spotLight.specular", 0.0f, 0.0f, 0.0f);
+        }
         objShader.setFloat("spotLight.constant", 1.0f);
         objShader.setFloat("spotLight.linear", 0.09);
         objShader.setFloat("spotLight.quadratic", 0.032);
@@ -401,25 +438,109 @@ int main() {
         objShader.setMat4("view", view);
 
         // render the loaded model
-        glm::mat4 islandmodel = glm::mat4(1.0f);
-        islandmodel = glm::translate(islandmodel, programState->islandPosition); // translate it down so it's at the center of the scene
-        islandmodel = glm::scale(islandmodel, glm::vec3(programState->islandScale));    // it's a bit too big for our scene, so scale it down
-        objShader.setMat4("model", islandmodel);
+        glm::mat4 model = glm::mat4(1.0f);
+        model = glm::translate(model, programState->islandPosition); // translate it down so it's at the center of the scene
+        model = glm::scale(model, glm::vec3(programState->islandScale));    // it's a bit too big for our scene, so scale it down
+        objShader.setMat4("model", model);
         island.Draw(objShader);
 
-        glm::mat4 bardmodel = glm::mat4(1.0f);
-        bardmodel = glm::translate(bardmodel, programState->bardPosition);
-        bardmodel = glm::scale(bardmodel, glm::vec3(programState->bardScale));
-        bardmodel = glm::rotate(bardmodel, glm::radians(315.0f), glm::vec3(0,1,0));
-        objShader.setMat4("model", bardmodel);
+        model = glm::mat4(1.0f);
+        model = glm::translate(model, programState->bardPosition);
+        model = glm::scale(model, glm::vec3(programState->bardScale));
+        model = glm::rotate(model, glm::radians(315.0f), glm::vec3(0,1,0));
+        objShader.setMat4("model", model);
         bard.Draw(objShader);
 
-        glm::mat4 mountainislandmodel = glm::mat4(1.0f);
-        mountainislandmodel = glm::translate(mountainislandmodel, glm::vec3(10.0f, -3.0f, 10.0f));
-        mountainislandmodel = glm::scale(mountainislandmodel, glm::vec3(5.0, 5.0, 5.0));
-        mountainislandmodel = glm::rotate(mountainislandmodel, glm::radians(315.0f), glm::vec3(0,1,0));
-        objShader.setMat4("model", mountainislandmodel);
+        model = glm::mat4(1.0f);
+        model = glm::translate(model, glm::vec3(20.0f, -7.0f, 20.0f));
+        model = glm::scale(model, glm::vec3(7.0, 7.0, 7.0));
+        objShader.setMat4("model", model);
         mountainisland.Draw(objShader);
+
+        model = glm::mat4(1.0f);
+        model = glm::translate(model, glm::vec3(-20.0f, -6.0f, 20.0f));
+        model = glm::scale(model, glm::vec3(6.0, 6.0, 6.0));
+        objShader.setMat4("model", model);
+        mountainisland.Draw(objShader);
+
+        model = glm::mat4(1.0f);
+        model = glm::translate(model, glm::vec3(-20.0f, -8.0f, -20.0f));
+        model = glm::scale(model, glm::vec3(8.0, 8.0, 8.0));
+        objShader.setMat4("model", model);
+        mountainisland.Draw(objShader);
+
+        model = glm::mat4(1.0f);
+        model = glm::translate(model, glm::vec3(-15.0f, -5.5f, -15.0f));
+        model = glm::scale(model, glm::vec3(0.5f, 0.5f, 0.5f));
+        objShader.setMat4("model", model);
+        sand_terrain.Draw(objShader);
+
+        model = glm::mat4(1.0f);
+        model = glm::translate(model, glm::vec3(-1.85f, 1.0f, 0.5f));
+        model = glm::scale(model, glm::vec3(0.25f, 0.25f, 0.25f));
+        model = glm::rotate(model, glm::radians(90.0f), glm::vec3(0,1,0));
+        objShader.setMat4("model", model);
+        support_beam.Draw(objShader);
+
+        model = glm::mat4(1.0f);
+        model = glm::translate(model, glm::vec3(1.05f, 1.0f, -0.5f));
+        model = glm::scale(model, glm::vec3(0.25f, 0.25f, 0.25f));
+        model = glm::rotate(model, glm::radians(90.0f), glm::vec3(0,1,0));
+        objShader.setMat4("model", model);
+        support_beam.Draw(objShader);
+
+        glm::mat4 chinese_lanternmodel = glm::mat4(1.0f);
+        chinese_lanternmodel = glm::translate(chinese_lanternmodel, glm::vec3(1.05f, 1.95f, -0.46f));
+        chinese_lanternmodel = glm::scale(chinese_lanternmodel, glm::vec3(0.08f, 0.08f, 0.08f));
+        chinese_lanternmodel = glm::rotate(chinese_lanternmodel, sin(currentFrame*2)*glm::radians(40.0f), glm::vec3(0,0,1));
+        chinese_lanternmodel = glm::translate(chinese_lanternmodel, glm::vec3(0.0f, -3.0f, 0.0f));
+        objShader.setMat4("model", chinese_lanternmodel);
+        chinese_lantern.Draw(sourceShader);
+
+        chinese_lanternmodel = glm::mat4(1.0f);
+        chinese_lanternmodel = glm::translate(chinese_lanternmodel, glm::vec3(-1.85f, 1.95f, 0.56f));
+        chinese_lanternmodel = glm::scale(chinese_lanternmodel, glm::vec3(0.08f, 0.08f, 0.08f));
+        chinese_lanternmodel = glm::rotate(chinese_lanternmodel, sin(0.6f+currentFrame*2)*glm::radians(40.0f), glm::vec3(0,0,1));
+        chinese_lanternmodel = glm::translate(chinese_lanternmodel, glm::vec3(0.0f, -3.0f, 0.0f));
+        objShader.setMat4("model", chinese_lanternmodel);
+        chinese_lantern.Draw(sourceShader);
+
+        model = glm::mat4(1.0f);
+        model = glm::translate(model, glm::vec3(-2.51f, 0.97f, -0.76f));
+        model = glm::scale(model, glm::vec3(0.38f));
+        model = glm::rotate(model, glm::radians(216.0f), glm::vec3(0,1,0));
+        objShader.setMat4("model", model);
+        boat.Draw(objShader);
+
+        model = glm::mat4(1.0f);
+        model = glm::translate(model, glm::vec3(-0.34f, 1.03f, 0.03f));
+        model = glm::scale(model, glm::vec3(0.065));
+        objShader.setMat4("model", model);
+        barrel.Draw(objShader);
+
+        model = glm::mat4(1.0f);
+        model = glm::translate(model, glm::vec3(0.79f, -0.21f, 1.65f));
+        model = glm::scale(model, glm::vec3(0.190f));
+        model = glm::rotate(model, glm::radians(303.0f), glm::vec3(0,1,0));
+        objShader.setMat4("model", model);
+        cliffs.Draw(objShader);
+
+        model = glm::mat4(1.0f);
+        model = glm::translate(model, glm::vec3(programState->tempPosition));
+        model = glm::scale(model, glm::vec3(programState->tempScale));
+        model = glm::rotate(model, glm::radians(programState->tempRotation), glm::vec3(0,1,0));
+        objShader.setMat4("model", model);
+        cliffs.Draw(objShader);
+
+
+        /* NEW OBJECT WITH TEMPORARY TRANSFORMATIONS
+        model = glm::mat4(1.0f);
+        model = glm::translate(model, glm::vec3(programState->tempPosition));
+        model = glm::scale(model, glm::vec3(programState->tempScale));
+        model = glm::rotate(model, glm::radians(programState->tempRotation), glm::vec3(0,1,0));
+        objShader.setMat4("model", model);
+        x.Draw(objShader);
+         */
 
         //object shading end, start of water shading
 
@@ -446,7 +567,6 @@ int main() {
         waterShader.setVec3("light.direction", -0.2f, -1.0f, -0.3f);
         waterShader.setVec3("viewPos", programState->camera.Position);
 
-        glm::mat4 model = glm::mat4(1.0f);
         waterShader.setMat4("projection", projection);
         waterShader.setMat4("view", view);
 
@@ -454,7 +574,7 @@ int main() {
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, diffuseMap);
 
-        // water squares (from furthest to nearest)
+        // water squares
         glBindVertexArray(transparentVAO);
         for (std::map<float, glm::vec3>::reverse_iterator it = sorted.rbegin(); it != sorted.rend(); ++it)
         {
@@ -524,6 +644,8 @@ void processInput(GLFWwindow *window) {
         programState->camera.ChangeSpeed(true);
     if (glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS)
         programState->camera.ChangeSpeed(false);
+    if (glfwGetKey(window, GLFW_KEY_F) == GLFW_PRESS)
+        programState->spotlight = !programState->spotlight;
 }
 
 // glfw: whenever the window size changed (by OS or user resize) this callback function executes
@@ -577,6 +699,10 @@ void DrawImGui(ProgramState *programState) {
         ImGui::DragFloat("Island scale", &programState->islandScale, 0.05, 0.1, 4.0);
         ImGui::DragFloat3("Bard position", (float*)&programState->bardPosition, 0.05,-20.0, 20.0);
         ImGui::DragFloat("Bard scale", &programState->bardScale, 0.05, 0.1, 4.0);
+
+        ImGui::DragFloat3("Temp position", (float*)&programState->tempPosition, 0.01,-20.0, 20.0);
+        ImGui::DragFloat("Temp scale", &programState->tempScale, 0.005, 0.02, 4.0);
+        ImGui::DragFloat("Temp rotation", &programState->tempRotation, 0.5, 0.0, 360.0);
 
         ImGui::DragFloat("pointLight.constant", &programState->pointLight.constant, 0.05, 0.0, 1.0);
         ImGui::DragFloat("pointLight.linear", &programState->pointLight.linear, 0.05, 0.0, 1.0);
