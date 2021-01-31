@@ -80,6 +80,12 @@ public:
             Position += Right * velocity;
     }
 
+    void ChangeSpeed(bool speedup)
+    {
+        if(speedup) MovementSpeed=10.0f;
+        else MovementSpeed=4.0f;
+    }
+
     // processes input received from a mouse input system. Expects the offset value in both the x and y direction.
     void ProcessMouseMovement(float xoffset, float yoffset, GLboolean constrainPitch = true)
     {
