@@ -7,7 +7,6 @@
 
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtc/type_ptr.hpp>
 
 #include <learnopengl/filesystem.h>
 #include <learnopengl/shader_m.h>
@@ -18,9 +17,9 @@
 
 void framebuffer_size_callback(GLFWwindow *window, int width, int height);
 
-void mouse_callback(GLFWwindow *window, double xpos, double ypos);
+void mouse_callback(GLFWwindow *window, double xPos, double yPos);
 
-void scroll_callback(GLFWwindow *window, double xoffset, double yoffset);
+void scroll_callback(GLFWwindow *window, double xOffset, double yOffset);
 
 void processInput(GLFWwindow *window);
 
@@ -28,14 +27,13 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action, int mod
 
 unsigned int loadTexture(const char *path);
 
-unsigned int loadCubemap(vector<std::string> faces);
+unsigned int loadCubeMap(vector<std::string> faces);
 
 // settings
 const unsigned int SCR_WIDTH = 800;
 const unsigned int SCR_HEIGHT = 600;
 
 // camera
-
 float lastX = SCR_WIDTH / 2.0f;
 float lastY = SCR_HEIGHT / 2.0f;
 bool firstMouse = true;
@@ -44,37 +42,20 @@ bool firstMouse = true;
 float deltaTime = 0.0f;
 float lastFrame = 0.0f;
 
-struct PointLight {
-    glm::vec3 position;
-    glm::vec3 ambient;
-    glm::vec3 diffuse;
-    glm::vec3 specular;
-
-    float constant;
-    float linear;
-    float quadratic;
-};
-
 struct ProgramState {
     glm::vec3 clearColor = glm::vec3(0);
     bool ImGuiEnabled = true;
     Camera camera;
     bool CameraMouseMovementUpdateEnabled = true;
-    glm::vec3 islandPosition = glm::vec3(0.0f, 0.35f, 0.9f);
-    float islandScale = 0.1f;
-    glm::vec3 bardPosition;
-    float bardScale;
-    PointLight pointLight;
     bool spotlight = false;
-    glm::vec3 tempPosition;
-    float tempScale;
-    float tempRotation;
     ProgramState()
             : camera(glm::vec3(0.0f, 0.0f, 3.0f)) {}
 
     void SaveToFile(std::string filename);
-
     void LoadFromFile(std::string filename);
+    glm::vec3 tempPosition=glm::vec3(0.0f, 2.0f, 0.0f);
+    float tempScale=1.0f;
+    float tempRotation=0.0f;
 };
 
 void ProgramState::SaveToFile(std::string filename) {
@@ -86,11 +67,6 @@ void ProgramState::SaveToFile(std::string filename) {
         << camera.Front.x << '\n'
         << camera.Front.y << '\n'
         << camera.Front.z << '\n'
-        << islandScale << '\n'
-        << bardPosition.x << '\n'
-        << bardPosition.y << '\n'
-        << bardPosition.z << '\n'
-        << bardScale << '\n'
         << spotlight << '\n'
         << tempPosition.x << '\n'
         << tempPosition.y << '\n'
@@ -109,11 +85,6 @@ void ProgramState::LoadFromFile(std::string filename) {
            >> camera.Front.x
            >> camera.Front.y
            >> camera.Front.z
-           >> islandScale
-           >> bardPosition.x
-           >> bardPosition.y
-           >> bardPosition.z
-           >> bardScale
            >> spotlight
            >> tempPosition.x
            >> tempPosition.y
@@ -129,7 +100,6 @@ void DrawImGui(ProgramState *programState);
 
 int main() {
     // glfw: initialize and configure
-    // ------------------------------
     glfwInit();
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
@@ -141,8 +111,8 @@ int main() {
 
     // glfw window creation
     // --------------------
-    GLFWwindow *window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "LearnOpenGL", NULL, NULL);
-    if (window == NULL) {
+    GLFWwindow *window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "Moonlit Retreat", nullptr, nullptr);
+    if (window == nullptr) {
         std::cout << "Failed to create GLFW window" << std::endl;
         glfwTerminate();
         return -1;
@@ -174,36 +144,33 @@ int main() {
     if (programState->ImGuiEnabled) {
         glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
     }
-    // Init Imgui
+    // Init Im gui
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGuiIO &io = ImGui::GetIO();
     (void) io;
 
-
-
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init("#version 330 core");
 
     // configure global opengl state
-    // -----------------------------
     glEnable(GL_DEPTH_TEST);
 
     // build and compile shaders
-    // -------------------------
     Shader objShader("resources/shaders/object_lighting.vs", "resources/shaders/object_lighting.fs");
-    Shader waterShader("resources/shaders/water_lighting.vs", "resources/shaders/water_lighting.fs");
+    Shader waterShader("resources/shaders/water_blending.vs", "resources/shaders/water_blending.fs");
     Shader skyboxShader("resources/shaders/skybox.vs", "resources/shaders/skybox.fs");
     Shader sourceShader("resources/shaders/light_source.vs", "resources/shaders/light_source.fs");
+    Shader discardShader("resources/shaders/discard_shader.vs", "resources/shaders/discard_shader.fs");
+    Shader waterfallShader("resources/shaders/waterfall_shader.vs", "resources/shaders/waterfall_shader.fs");
 
     // load models
-    // -----------
-    Model bard("resources/objects/sleepybard/sleepybard.obj");
+    Model bard("resources/objects/sleepy_bard/sleepy_bard.obj");
     bard.SetShaderTextureNamePrefix("material.");
-    Model island("resources/objects/island/islandwithdecor.obj");
+    Model island("resources/objects/island/island_with_decor.obj");
     island.SetShaderTextureNamePrefix("material.");
-    Model mountainisland("resources/objects/mountainisland/mountain.obj");
-    mountainisland.SetShaderTextureNamePrefix("material.");
+    Model mountain_island("resources/objects/mountain_island/mountain.obj");
+    mountain_island.SetShaderTextureNamePrefix("material.");
     Model sand_terrain("resources/objects/sand_terrain/sand_terrain.obj");
     sand_terrain.SetShaderTextureNamePrefix("material.");
     Model support_beam("resources/objects/support_beam/support_beam.obj");
@@ -216,17 +183,8 @@ int main() {
     barrel.SetShaderTextureNamePrefix("material.");
     Model cliffs("resources/objects/cliffs/cliffs.obj");
     cliffs.SetShaderTextureNamePrefix("material.");
-
-
-    PointLight& pointLight = programState->pointLight;
-    pointLight.position = glm::vec3(4.0f, 4.0, 0.0);
-    pointLight.ambient = glm::vec3(0.1, 0.1, 0.1);
-    pointLight.diffuse = glm::vec3(0.6, 0.6, 0.6);
-    pointLight.specular = glm::vec3(1.0, 1.0, 1.0);
-
-    pointLight.constant = 1.0f;
-    pointLight.linear = 0.09f;
-    pointLight.quadratic = 0.032f;
+    Model granite("resources/objects/granite/granite.obj");
+    cliffs.SetShaderTextureNamePrefix("material.");
 
     // set up vertex data (and buffer(s)) and configure vertex attributes
     // ------------------------------------------------------------------
@@ -240,6 +198,28 @@ int main() {
              25.0f,  0.0f,  25.0f, 0.0f, 1.0f, 0.0f, 40.0f, 0.0f,
             -25.0f,  0.0f, -25.0f, 0.0f, 1.0f, 0.0f, 0.0f, 40.0f,
              25.0f,  0.0f, -25.0f, 0.0f, 1.0f, 0.0f, 40.0f, 40.0f
+    };
+
+    float transparentVertices2[] = {
+            // positions         // texture Coords
+            0.0f, -0.5f,  0.0f,  0.0f,  0.0f,
+            0.0f,  0.5f,  0.0f,  0.0f,  1.0f,
+            1.0f,  0.5f,  0.0f,  1.0f,  1.0f,
+
+            0.0f, -0.5f,  0.0f,  0.0f,  0.0f,
+            1.0f,  0.5f,  0.0f,  1.0f,  1.0f,
+            1.0f, -0.5f,  0.0f,  1.0f,  0.0f
+    };
+
+    float waterfallVertices[] = {
+            // positions         // texture Coords
+            0.0f,  0.5f,  0.0f,  0.0f,  0.0f,
+            0.0f, -0.5f,  0.0f,  0.0f,  1.0f,
+            1.0f, -0.5f,  0.0f,  1.0f,  1.0f,
+
+            0.0f,  0.5f,  0.0f,  0.0f,  0.0f,
+            1.0f, -0.5f,  0.0f,  1.0f,  1.0f,
+            1.0f,  0.5f,  0.0f,  1.0f,  0.0f
     };
 
     float skyboxVertices[] = {
@@ -287,7 +267,7 @@ int main() {
             1.0f, -1.0f,  1.0f
     };
 
-    // transparent VAO
+    // transparent VAO for water
     unsigned int transparentVAO, transparentVBO;
     glGenVertexArrays(1, &transparentVAO);
     glGenBuffers(1, &transparentVBO);
@@ -295,12 +275,38 @@ int main() {
     glBindBuffer(GL_ARRAY_BUFFER, transparentVBO);
     glBufferData(GL_ARRAY_BUFFER, sizeof(transparentVertices), transparentVertices, GL_STATIC_DRAW);
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)nullptr);
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));
     glEnableVertexAttribArray(1);
     glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(6 * sizeof(float)));
     glEnableVertexAttribArray(2);
+
+    // transparent VAO for grass
+    unsigned int transparentVAO2, transparentVBO2;
+    glGenVertexArrays(1, &transparentVAO2);
+    glGenBuffers(1, &transparentVBO2);
+    glBindVertexArray(transparentVAO2);
+    glBindBuffer(GL_ARRAY_BUFFER, transparentVBO2);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(transparentVertices2), transparentVertices2, GL_STATIC_DRAW);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)nullptr);
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
+    glBindVertexArray(0);
+
+    // waterfall VAO
+    unsigned int waterfallVAO, waterfallVBO;
+    glGenVertexArrays(1, &waterfallVAO);
+    glGenBuffers(1, &waterfallVBO);
+    glBindVertexArray(waterfallVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, waterfallVBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(waterfallVertices), waterfallVertices, GL_STATIC_DRAW);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)nullptr);
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
+    glBindVertexArray(0);
 
     // skybox VAO
     unsigned int skyboxVAO, skyboxVBO;
@@ -310,11 +316,14 @@ int main() {
     glBindBuffer(GL_ARRAY_BUFFER, skyboxVBO);
     glBufferData(GL_ARRAY_BUFFER, sizeof(skyboxVertices), &skyboxVertices, GL_STATIC_DRAW);
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)nullptr);
 
     // load textures
     // -------------
-    unsigned int diffuseMap = loadTexture(FileSystem::getPath("resources/textures/waterdark.png").c_str());
+    unsigned int diffuseMap = loadTexture(FileSystem::getPath("resources/textures/water_dark.png").c_str());
+    unsigned int transparentTexture = loadTexture(FileSystem::getPath("resources/textures/grass.png").c_str());
+    unsigned int waterfallTexture = loadTexture(FileSystem::getPath("resources/textures/seamless waterfall.jpeg").c_str());
+
 
     // transparent window locations
     // --------------------------------
@@ -330,15 +339,6 @@ int main() {
 
     vector<std::string> faces
             {
-                    //FileSystem::getPath("resources/textures/skybox/right.png"),
-                    //FileSystem::getPath("resources/textures/skybox/left.png"),
-                    //FileSystem::getPath("resources/textures/skybox/top.png"),
-                    //FileSystem::getPath("resources/textures/skybox/bottom.png"),
-                    //FileSystem::getPath("resources/textures/skybox/front.png"),
-                    //FileSystem::getPath("resources/textures/skybox/back.png")
-
-                    //rotated skybox to put the moon in a different position
-
                     FileSystem::getPath("resources/textures/skybox/front.png"),
                     FileSystem::getPath("resources/textures/skybox/back.png"),
                     FileSystem::getPath("resources/textures/skybox/top.png"),
@@ -346,28 +346,42 @@ int main() {
                     FileSystem::getPath("resources/textures/skybox/left.png"),
                     FileSystem::getPath("resources/textures/skybox/right.png")
             };
-    unsigned int cubemapTexture = loadCubemap(faces);
 
-    // render loop
-    // -----------
+    vector<glm::vec3> vegetation
+            {
+                    glm::vec3(-1.5f, 1.5f, -0.48f),
+                    glm::vec3( 1.5f, 1.5f, 0.51f),
+                    glm::vec3( 0.0f, 1.5f, 0.7f),
+                    glm::vec3(-0.7f, 1.5f, -2.3f),
+                    glm::vec3 (1.0f, 1.5f, -1.2f),
+                    glm::vec3 (-0.1f, 1.5f, -0.63f),
+                    glm::vec3 (-1.75f, 1.5f, 1.0f),
+                    glm::vec3 (-0.6f, 1.5f, -2.0f)
+            };
+
+    vector<glm::vec3> waterfall_tiles
+            {
+                    //glm::vec3( -1.0f, 1.0f, 0.7f),
+                    glm::vec3( -0.8f, 1.12f, 1.0f),
+                    glm::vec3( -0.8f, 1.37f, 1.0f),
+                    glm::vec3( -0.8f, 1.62f, 1.0f),
+                    glm::vec3( -0.77f, 1.86f, 1.03f),
+                    glm::vec3( -0.66f, 2.03f, 1.14f),
+                    glm::vec3( -0.50f, 2.11f, 1.30f),
+                    glm::vec3( -0.33f, 2.13f, 1.47f)
+            };
+
+    unsigned int cubeMapTexture = loadCubeMap(faces);
+
     while (!glfwWindowShouldClose(window)) {
-        // per-frame time logic
-        // --------------------
         float currentFrame = glfwGetTime();
-        deltaTime = currentFrame - lastFrame;
-        lastFrame = currentFrame;
+        deltaTime = (float)currentFrame - lastFrame;
+        lastFrame = (float)currentFrame;
 
-        // input
-        // -----
         processInput(window);
 
-
-        // render
-        // ------
         glClearColor(programState->clearColor.r, programState->clearColor.g, programState->clearColor.b, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-        // don't forget to enable shader before setting uniforms
 
         objShader.use();
         objShader.setVec3("viewPos", programState->camera.Position);
@@ -377,9 +391,7 @@ int main() {
         waterShader.setBool("celShading", false);
         sourceShader.setBool("celShading", false);
 
-        // view/projection transformations
-        glm::mat4 projection = glm::perspective(glm::radians(programState->camera.Zoom),
-                                                (float) SCR_WIDTH / (float) SCR_HEIGHT, 0.1f, 100.0f);
+        glm::mat4 projection = glm::perspective(glm::radians(programState->camera.Zoom), (float) SCR_WIDTH / (float) SCR_HEIGHT, 0.1f, 100.0f);
         glm::mat4 view = programState->camera.GetViewMatrix();
         objShader.setMat4("projection", projection);
         objShader.setMat4("view", view);
@@ -398,16 +410,25 @@ int main() {
         transMat2 = glm::rotate(transMat2, sin(0.6f+currentFrame*2)*glm::radians(60.0f), glm::vec3(0,0,1));
         transMat2 = glm::translate(transMat2, glm::vec3(0.0f, -3.0f, 0.0f));
 
+        glm::mat4 baseMat1 = glm::mat4(1.0f);
+        baseMat1 = glm::translate(transMat1, glm::vec3(1.05f, 1.95f, 0.06f));
+        baseMat1 = glm::scale(baseMat1, glm::vec3(0.08f, 0.08f, 0.08f));
+        glm::mat4 baseMat2 = glm::mat4(1.0f);
+        baseMat2 = glm::translate(transMat2, glm::vec3(-1.85f, 1.95f, 1.16f));
+        baseMat2 = glm::scale(baseMat2, glm::vec3(0.08f, 0.08f, 0.08f));
+
+
         glm::vec3 pos0 = transMat1 * glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
         glm::vec3 pos1 = transMat2 * glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
 
-        /*
-           Here we set all the uniforms for the 5/6 types of lights we have. We have to set them manually and index
-           the proper PointLight struct in the array to set each uniform variable. This can be done more code-friendly
-           by defining light types as classes and set their values in there, or by using a more efficient uniform approach
-           by using 'Uniform buffer objects', but that is something we'll discuss in the 'Advanced GLSL' tutorial.
-        */
+        glm::vec3 basePos0 = baseMat1 *  glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
+        glm::vec3 basePos1 = baseMat2 *  glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
+
+        glm::vec3 spotlight_vector1 = normalize(pos0 - basePos0);
+        glm::vec3 spotlight_vector2 = normalize(pos1 - basePos1);
+
         // directional light
+
         objShader.setVec3("dirLight.direction", -1.0f, -0.2f, 0.0f);
         objShader.setVec3("dirLight.ambient", 0.05f, 0.05f, 0.20f);
         objShader.setVec3("dirLight.diffuse", 0.4f, 0.4f, 0.6f);
@@ -424,6 +445,7 @@ int main() {
         objShader.setFloat("pointLights[0].quadratic", 0.032);
 
         // point light 2
+
         objShader.setVec3("pointLights[1].position", pos1);
         objShader.setVec3("pointLights[1].ambient", 0.10f, 0.05f, 0.05f);
         objShader.setVec3("pointLights[1].diffuse", 0.8f, 0.6f, 0.6f);
@@ -432,64 +454,92 @@ int main() {
         objShader.setFloat("pointLights[1].linear", 0.09);
         objShader.setFloat("pointLights[1].quadratic", 0.032);
 
-        // spotLight
-        objShader.setVec3("spotLight.position", programState->camera.Position);
-        objShader.setVec3("spotLight.direction", programState->camera.Front);
-        objShader.setVec3("spotLight.ambient", 0.0f, 0.0f, 0.0f);
+        // spotLight 1
+
+        objShader.setVec3("spotLights[0].position", basePos0);
+        objShader.setVec3("spotLights[0].direction", spotlight_vector1);
+        objShader.setVec3("spotLights[0].ambient", 0.0f, 0.0f, 0.0f);
         if(programState->spotlight) {
-            objShader.setVec3("spotLight.diffuse", 1.0f, 1.0f, 1.0f);
-            objShader.setVec3("spotLight.specular", 1.0f, 1.0f, 1.0f);
+            objShader.setVec3("spotLights[0].diffuse", 1.0f, 1.0f, 1.0f);
+            objShader.setVec3("spotLights[0].specular", 1.0f, 1.0f, 1.0f);
         }
         else{
-            objShader.setVec3("spotLight.diffuse", 0.0f, 0.0f, 0.0f);
-            objShader.setVec3("spotLight.specular", 0.0f, 0.0f, 0.0f);
+            objShader.setVec3("spotLights[0].diffuse", 0.0f, 0.0f, 0.0f);
+            objShader.setVec3("spotLights[0].specular", 0.0f, 0.0f, 0.0f);
         }
-        objShader.setFloat("spotLight.constant", 1.0f);
-        objShader.setFloat("spotLight.linear", 0.09);
-        objShader.setFloat("spotLight.quadratic", 0.032);
-        objShader.setFloat("spotLight.cutOff", glm::cos(glm::radians(12.5f)));
-        objShader.setFloat("spotLight.outerCutOff", glm::cos(glm::radians(15.0f)));
+        objShader.setFloat("spotLights[0].constant", 1.0f);
+        objShader.setFloat("spotLights[0].linear", 0.09);
+        objShader.setFloat("spotLights[0].quadratic", 0.032);
+        objShader.setFloat("spotLights[0].cutOff", glm::cos(glm::radians(2.5f)));
+        objShader.setFloat("spotLights[0].outerCutOff", glm::cos(glm::radians(5.0f)));
+
+        // spotLight 2
+
+        objShader.setVec3("spotLights[1].position", basePos1);
+        objShader.setVec3("spotLights[1].direction", spotlight_vector2);
+        objShader.setVec3("spotLights[1].ambient", 0.0f, 0.0f, 0.0f);
+        if(programState->spotlight) {
+            objShader.setVec3("spotLights[1].diffuse", 1.0f, 1.0f, 1.0f);
+            objShader.setVec3("spotLights[1].specular", 1.0f, 1.0f, 1.0f);
+        }
+        else{
+            objShader.setVec3("spotLights[1].diffuse", 0.0f, 0.0f, 0.0f);
+            objShader.setVec3("spotLights[1].specular", 0.0f, 0.0f, 0.0f);
+        }
+        objShader.setFloat("spotLights[1].constant", 1.0f);
+        objShader.setFloat("spotLights[1].linear", 0.09);
+        objShader.setFloat("spotLights[1].quadratic", 0.032);
+        objShader.setFloat("spotLights[1].cutOff", glm::cos(glm::radians(2.5f)));
+        objShader.setFloat("spotLights[1].outerCutOff", glm::cos(glm::radians(5.0f)));
 
 
+        // rendering the loaded models
 
-        // render the loaded model
+        //island
         glm::mat4 model = glm::mat4(1.0f);
-        model = glm::translate(model, programState->islandPosition); // translate it down so it's at the center of the scene
-        model = glm::scale(model, glm::vec3(programState->islandScale));    // it's a bit too big for our scene, so scale it down
+        model = glm::translate(model, glm::vec3(0.0f, 0.35f, 0.9f));
+        model = glm::scale(model, glm::vec3(0.1f));
         objShader.setMat4("model", model);
         island.Draw(objShader);
 
+        //bard
         model = glm::mat4(1.0f);
-        model = glm::translate(model, programState->bardPosition);
-        model = glm::scale(model, glm::vec3(programState->bardScale));
+        model = glm::translate(model, glm::vec3(-0.42f, 1.11f, 0.08f));
+        model = glm::scale(model, glm::vec3(0.24f));
         model = glm::rotate(model, glm::radians(315.0f), glm::vec3(0,1,0));
+        model = glm::rotate(model, glm::radians(350.0f), glm::vec3(1,0,0));
         objShader.setMat4("model", model);
         bard.Draw(objShader);
 
+        //mountain island 1
         model = glm::mat4(1.0f);
         model = glm::translate(model, glm::vec3(20.0f, -7.0f, 20.0f));
         model = glm::scale(model, glm::vec3(7.0, 7.0, 7.0));
         objShader.setMat4("model", model);
-        mountainisland.Draw(objShader);
+        mountain_island.Draw(objShader);
 
+        //mountain island 2
         model = glm::mat4(1.0f);
         model = glm::translate(model, glm::vec3(-20.0f, -6.0f, 20.0f));
         model = glm::scale(model, glm::vec3(6.0, 6.0, 6.0));
         objShader.setMat4("model", model);
-        mountainisland.Draw(objShader);
+        mountain_island.Draw(objShader);
 
+        //mountain island 3
         model = glm::mat4(1.0f);
         model = glm::translate(model, glm::vec3(-20.0f, -8.0f, -20.0f));
         model = glm::scale(model, glm::vec3(8.0, 8.0, 8.0));
         objShader.setMat4("model", model);
-        mountainisland.Draw(objShader);
+        mountain_island.Draw(objShader);
 
+        //underwater terrain island 1
         model = glm::mat4(1.0f);
         model = glm::translate(model, glm::vec3(-15.0f, -5.5f, -15.0f));
         model = glm::scale(model, glm::vec3(0.5f, 0.5f, 0.5f));
         objShader.setMat4("model", model);
         sand_terrain.Draw(objShader);
 
+        //lantern support 1
         model = glm::mat4(1.0f);
         model = glm::translate(model, glm::vec3(-1.85f, 1.0f, 0.5f));
         model = glm::scale(model, glm::vec3(0.25f, 0.25f, 0.25f));
@@ -497,6 +547,7 @@ int main() {
         objShader.setMat4("model", model);
         support_beam.Draw(objShader);
 
+        //lantern support 2
         model = glm::mat4(1.0f);
         model = glm::translate(model, glm::vec3(1.05f, 1.0f, -0.5f));
         model = glm::scale(model, glm::vec3(0.25f, 0.25f, 0.25f));
@@ -504,9 +555,7 @@ int main() {
         objShader.setMat4("model", model);
         support_beam.Draw(objShader);
 
-
-
-
+        //boat
         model = glm::mat4(1.0f);
         model = glm::translate(model, glm::vec3(-2.51f, 0.97f, -0.76f));
         model = glm::scale(model, glm::vec3(0.38f));
@@ -514,12 +563,14 @@ int main() {
         objShader.setMat4("model", model);
         boat.Draw(objShader);
 
+        //barrel the bard is sitting on
         model = glm::mat4(1.0f);
         model = glm::translate(model, glm::vec3(-0.34f, 1.03f, 0.03f));
         model = glm::scale(model, glm::vec3(0.065));
         objShader.setMat4("model", model);
         barrel.Draw(objShader);
 
+        //cliffs out of which the small waterfall is flowing
         model = glm::mat4(1.0f);
         model = glm::translate(model, glm::vec3(0.79f, -0.21f, 1.65f));
         model = glm::scale(model, glm::vec3(0.190f));
@@ -527,15 +578,32 @@ int main() {
         objShader.setMat4("model", model);
         cliffs.Draw(objShader);
 
+        //cliffs 2
         model = glm::mat4(1.0f);
-        model = glm::translate(model, glm::vec3(programState->tempPosition));
-        model = glm::scale(model, glm::vec3(programState->tempScale));
-        model = glm::rotate(model, glm::radians(programState->tempRotation), glm::vec3(0,1,0));
+        model = glm::translate(model, glm::vec3(-0.31f, 0.09f, 2.65f));
+        model = glm::scale(model, glm::vec3(0.245f));
+        model = glm::rotate(model, glm::radians(49.5f), glm::vec3(0,1,0));
         objShader.setMat4("model", model);
         cliffs.Draw(objShader);
 
+        //granite protrusion in the cliff
+        model = glm::mat4(1.0f);
+        model = glm::translate(model, glm::vec3(0.22f, 2.14f, 1.37f));
+        model = glm::scale(model, glm::vec3(74.08f));
+        model = glm::rotate(model, glm::radians(244.0f), glm::vec3(0,1,0));
+        objShader.setMat4("model", model);
+        granite.Draw(objShader);
 
-        /* NEW OBJECT WITH TEMPORARY TRANSFORMATIONS
+        //granite 2
+        model = glm::mat4(1.0f);
+        model = glm::translate(model, glm::vec3(-0.63f, 2.24f, 1.97f));
+        model = glm::scale(model, glm::vec3(74.08f));
+        model = glm::rotate(model, glm::radians(180.0f), glm::vec3(1,0,0));
+        model = glm::rotate(model, glm::radians(12.5f), glm::vec3(0,1,0));
+        objShader.setMat4("model", model);
+        granite.Draw(objShader);
+
+        /* template for a new object
         model = glm::mat4(1.0f);
         model = glm::translate(model, glm::vec3(programState->tempPosition));
         model = glm::scale(model, glm::vec3(programState->tempScale));
@@ -544,30 +612,67 @@ int main() {
         x.Draw(objShader);
          */
 
-        //object shading end, start of light source shading
+        //object rendering end, start of light source rendering
 
         sourceShader.use();
         sourceShader.setMat4("projection", projection);
         sourceShader.setMat4("view", view);
-
         sourceShader.setBool("celShading", false);
-//        glm::mat4 chinese_lanternmodel = glm::mat4(1.0f);
-//        chinese_lanternmodel = glm::translate(chinese_lanternmodel, glm::vec3(1.05f, 1.95f, -0.46f));
-//        chinese_lanternmodel = glm::scale(chinese_lanternmodel, glm::vec3(0.08f, 0.08f, 0.08f));
-//        chinese_lanternmodel = glm::rotate(chinese_lanternmodel, sin(currentFrame*2)*glm::radians(40.0f), glm::vec3(0,0,1));
-//        chinese_lanternmodel = glm::translate(chinese_lanternmodel, glm::vec3(0.0f, -3.0f, 0.0f));
+
+        //using the transformation matrices from earlier
         sourceShader.setMat4("model", transMat1);
         chinese_lantern.Draw(sourceShader);
-
-//        chinese_lanternmodel = glm::mat4(1.0f);
-//        chinese_lanternmodel = glm::translate(chinese_lanternmodel, glm::vec3(-1.85f, 1.95f, 0.56f));
-//        chinese_lanternmodel = glm::scale(chinese_lanternmodel, glm::vec3(0.08f, 0.08f, 0.08f));
-//        chinese_lanternmodel = glm::rotate(chinese_lanternmodel, sin(0.6f+currentFrame*2)*glm::radians(40.0f), glm::vec3(0,0,1));
-//        chinese_lanternmodel = glm::translate(chinese_lanternmodel, glm::vec3(0.0f, -3.0f, 0.0f));
         sourceShader.setMat4("model", transMat2);
         chinese_lantern.Draw(sourceShader);
 
-        //lightsource shading end, start of water shading
+        //light source rendering end, start of waterfall rendering
+
+        waterfallShader.use();
+        waterfallShader.setMat4("projection", projection);
+        waterfallShader.setMat4("view", view);
+        waterfallShader.setFloat("currentFrame", currentFrame);
+        glBindVertexArray(waterfallVAO);
+        glBindTexture(GL_TEXTURE_2D, waterfallTexture);
+        for (unsigned int i = 0; i < waterfall_tiles.size(); i++)
+        {
+            model = glm::mat4(1.0f);
+            model = glm::translate(model, waterfall_tiles[i]);
+
+            model = glm::rotate(model, glm::radians(45.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+            model = glm::scale(model, glm::vec3(0.25f, 0.25f, 0.25f));
+            if(i==3)
+                model = glm::rotate(model, 170.0f, (glm::vec3(1.0f, 0.0f, 0.0f)));
+            if(i==4)
+                model = glm::rotate(model, glm::radians(62.5f), (glm::vec3(1.0f, 0.0f, 0.0f)));
+            if(i==5)
+                model = glm::rotate(model, glm::radians(80.0f), (glm::vec3(1.0f, 0.0f, 0.0f)));
+            if(i==6)
+                model = glm::rotate(model, glm::radians(90.0f), (glm::vec3(1.0f, 0.0f, 0.0f)));
+            waterfallShader.setMat4("model", model);
+
+            glDrawArrays(GL_TRIANGLES, 0, 6);
+        }
+
+        //waterfall rendering end, start of vegetation rendering
+
+        discardShader.use();
+        discardShader.setMat4("projection", projection);
+        discardShader.setMat4("view", view);
+        glBindVertexArray(transparentVAO2);
+        glBindTexture(GL_TEXTURE_2D, transparentTexture);
+        for (unsigned int i = 0; i < vegetation.size(); i++)
+        {
+            model = glm::mat4(1.0f);
+            model = glm::translate(model, vegetation[i]);
+            model = glm::rotate(model, (float)i*60.0f, glm::vec3(0.0, 0.1, 0.0));
+            discardShader.setMat4("model", model);
+            glDrawArrays(GL_TRIANGLES, 0, 6);
+        }
+
+
+        //vegetation rendering end, start of water rendering
+
+        //essentially unnecessary sorting, might change implementation so it's there just in case
         std::map<float, glm::vec3> sorted;
         for (unsigned int i = 0; i < waterSquares.size(); i++)
         {
@@ -575,18 +680,15 @@ int main() {
             sorted[distance] = waterSquares[i];
         }
 
-        // draw objects
         waterShader.use();
         waterShader.setInt("material.diffuse", 0);
         waterShader.setInt("material.specular", 1);
 
-        // light properties
         waterShader.setVec3("light.ambient", 0.2f, 0.2f, 0.2f);
         waterShader.setVec3("light.diffuse", 0.5f, 0.5f, 0.5f);
         waterShader.setVec3("light.specular", 1.0f, 1.0f, 1.0f);
 
-        // material properties
-        waterShader.setFloat("material.shininess", 64.0f);
+        waterShader.setFloat("material.shininess", 32.0f);
 
         waterShader.setVec3("light.direction", -0.2f, -1.0f, -0.3f);
         waterShader.setVec3("viewPos", programState->camera.Position);
@@ -594,19 +696,18 @@ int main() {
         waterShader.setMat4("projection", projection);
         waterShader.setMat4("view", view);
 
-        // bind diffuse map
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, diffuseMap);
-
-        // water squares
         glBindVertexArray(transparentVAO);
-        for (std::map<float, glm::vec3>::reverse_iterator it = sorted.rbegin(); it != sorted.rend(); ++it)
+        for (auto it = sorted.rbegin(); it != sorted.rend(); ++it)
         {
             model = glm::mat4(1.0f);
             model = glm::translate(model, it->second);
             waterShader.setMat4("model", model);
             glDrawArrays(GL_TRIANGLES, 0, 6);
         }
+
+        //water rendering end, start of sky box rendering
 
         skyboxShader.use();
         skyboxShader.setInt("skybox", 0);
@@ -616,10 +717,10 @@ int main() {
         view = glm::mat4(glm::mat3(programState->camera.GetViewMatrix())); // remove translation from the view matrix
         skyboxShader.setMat4("view", view);
         skyboxShader.setMat4("projection", projection);
-        // skybox cube
+
         glBindVertexArray(skyboxVAO);
         glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_CUBE_MAP, cubemapTexture);
+        glBindTexture(GL_TEXTURE_CUBE_MAP, cubeMapTexture);
         glDrawArrays(GL_TRIANGLES, 0, 36);
         glBindVertexArray(0);
         glDepthFunc(GL_LESS); // set depth function back to default
@@ -627,10 +728,6 @@ int main() {
         if (programState->ImGuiEnabled)
             DrawImGui(programState);
 
-
-
-        // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
-        // -------------------------------------------------------------------------------
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
@@ -640,11 +737,15 @@ int main() {
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();
-    // glfw: terminate, clearing all previously allocated GLFW resources.
-    // ------------------------------------------------------------------
 
     glDeleteVertexArrays(1, &skyboxVAO);
     glDeleteBuffers(1, &skyboxVAO);
+    glDeleteVertexArrays(1, &transparentVAO);
+    glDeleteBuffers(1, &transparentVAO);
+    glDeleteVertexArrays(1, &transparentVAO2);
+    glDeleteBuffers(1, &transparentVAO2);
+    glDeleteVertexArrays(1, &waterfallVAO);
+    glDeleteBuffers(1, &waterfallVAO);
 
     glfwTerminate();
     return 0;
@@ -668,8 +769,7 @@ void processInput(GLFWwindow *window) {
         programState->camera.ChangeSpeed(true);
     if (glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS)
         programState->camera.ChangeSpeed(false);
-    if (glfwGetKey(window, GLFW_KEY_F) == GLFW_PRESS)
-        programState->spotlight = !programState->spotlight;
+
 }
 
 // glfw: whenever the window size changed (by OS or user resize) this callback function executes
@@ -677,33 +777,38 @@ void processInput(GLFWwindow *window) {
 void framebuffer_size_callback(GLFWwindow *window, int width, int height) {
     // make sure the viewport matches the new window dimensions; note that width and
     // height will be significantly larger than specified on retina displays.
+    (void) window;
 
     glViewport(0, 0, width, height);
 }
 
 // glfw: whenever the mouse moves, this callback is called
 // -------------------------------------------------------
-void mouse_callback(GLFWwindow *window, double xpos, double ypos) {
+void mouse_callback(GLFWwindow *window, double xPos, double yPos) {
+    (void) window;
+
     if (firstMouse) {
-        lastX = xpos;
-        lastY = ypos;
+        lastX = (float)xPos;
+        lastY = (float)yPos;
         firstMouse = false;
     }
 
-    float xoffset = xpos - lastX;
-    float yoffset = lastY - ypos; // reversed since y-coordinates go from bottom to top
+    float xOffset = (float)xPos - lastX;
+    float yOffset = lastY - (float)yPos; // reversed since y-coordinates go from bottom to top
 
-    lastX = xpos;
-    lastY = ypos;
+    lastX = (float)xPos;
+    lastY = (float)yPos;
 
     if (programState->CameraMouseMovementUpdateEnabled)
-        programState->camera.ProcessMouseMovement(xoffset, yoffset);
+        programState->camera.ProcessMouseMovement(xOffset, yOffset);
 }
 
 // glfw: whenever the mouse scroll wheel scrolls, this callback is called
 // ----------------------------------------------------------------------
-void scroll_callback(GLFWwindow *window, double xoffset, double yoffset) {
-    programState->camera.ProcessMouseScroll(yoffset);
+void scroll_callback(GLFWwindow *window, double xOffset, double yOffset) {
+    (void) window;
+    (void) xOffset;
+    programState->camera.ProcessMouseScroll((float)yOffset);
 }
 
 void DrawImGui(ProgramState *programState) {
@@ -719,18 +824,10 @@ void DrawImGui(ProgramState *programState) {
         ImGui::SliderFloat("Float slider", &f, 0.0, 1.0);
         ImGui::ColorEdit3("Background color", (float *) &programState->clearColor);
 
-        ImGui::DragFloat3("Island position", (float*)&programState->islandPosition, 0.05,-20.0, 20.0);
-        ImGui::DragFloat("Island scale", &programState->islandScale, 0.05, 0.1, 4.0);
-        ImGui::DragFloat3("Bard position", (float*)&programState->bardPosition, 0.05,-20.0, 20.0);
-        ImGui::DragFloat("Bard scale", &programState->bardScale, 0.05, 0.1, 4.0);
-
         ImGui::DragFloat3("Temp position", (float*)&programState->tempPosition, 0.01,-20.0, 20.0);
-        ImGui::DragFloat("Temp scale", &programState->tempScale, 0.005, 0.02, 4.0);
+        ImGui::DragFloat("Temp scale", &programState->tempScale, 0.02, 0.02, 128.0);
         ImGui::DragFloat("Temp rotation", &programState->tempRotation, 0.5, 0.0, 360.0);
 
-        ImGui::DragFloat("pointLight.constant", &programState->pointLight.constant, 0.05, 0.0, 1.0);
-        ImGui::DragFloat("pointLight.linear", &programState->pointLight.linear, 0.05, 0.0, 1.0);
-        ImGui::DragFloat("pointLight.quadratic", &programState->pointLight.quadratic, 0.05, 0.0, 1.0);
         ImGui::End();
     }
 
@@ -749,6 +846,8 @@ void DrawImGui(ProgramState *programState) {
 }
 
 void key_callback(GLFWwindow *window, int key, int scancode, int action, int mods) {
+    (void) scancode;
+    (void) mods;
     if (key == GLFW_KEY_F1 && action == GLFW_PRESS) {
         programState->ImGuiEnabled = !programState->ImGuiEnabled;
         if (programState->ImGuiEnabled) {
@@ -757,6 +856,9 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action, int mod
         } else {
             glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
         }
+    }
+    if (key == GLFW_KEY_F && action == GLFW_PRESS) {
+        programState->spotlight = !programState->spotlight;
     }
 }
 
@@ -769,7 +871,7 @@ unsigned int loadTexture(char const * path)
     unsigned char *data = stbi_load(path, &width, &height, &nrComponents, 0);
     if (data)
     {
-        GLenum format;
+        GLenum format = GL_RED;
         if (nrComponents == 1)
             format = GL_RED;
         else if (nrComponents == 3)
@@ -781,8 +883,16 @@ unsigned int loadTexture(char const * path)
         glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
         glGenerateMipmap(GL_TEXTURE_2D);
 
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT); // for this tutorial: use GL_CLAMP_TO_EDGE to prevent semi-transparent borders. Due to interpolation it takes texels from next repeat
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+
+        if(nullptr != strstr(path, "grass.png")){
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+        }
+        else {
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+        }
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
@@ -797,7 +907,7 @@ unsigned int loadTexture(char const * path)
     return textureID;
 }
 
-unsigned int loadCubemap(vector<std::string> faces)
+unsigned int loadCubeMap(vector<std::string> faces)
 {
     unsigned int textureID;
     glGenTextures(1, &textureID);
@@ -814,7 +924,7 @@ unsigned int loadCubemap(vector<std::string> faces)
         }
         else
         {
-            std::cout << "Cubemap texture failed to load at path: " << faces[i] << std::endl;
+            std::cout << "CubeMap texture failed to load at path: " << faces[i] << std::endl;
             stbi_image_free(data);
         }
     }
