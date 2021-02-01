@@ -3,7 +3,7 @@ Projekat iz računarske grafike, korišćen skelet sa `https://github.com/matf-r
 
 # Uputstvo
 1. `git clone https://github.com/Dyslexoid/rg-moonlit-retreat.git`
-2. Resurse preuzeti sa `https://drive.google.com/file/d/1rGbAnoB0BnZMuKmRlYqf5VfQY2yeyyYy`
+2. Resurse preuzeti sa [google drajva](https://drive.google.com/file/d/1rGbAnoB0BnZMuKmRlYqf5VfQY2yeyyYy)
 3. Otpatkovati u `Moonlit Retreat/resources`
 4. CLion -> Open -> path/to/my/project
 5. Main se nalazi u src/main.cpp
@@ -30,7 +30,7 @@ Projekat iz računarske grafike, korišćen skelet sa `https://github.com/matf-r
 [Terrain 2 by 3DMaesen](https://sketchfab.com/3d-models/terrain-2-29b795a7fe5c41e4b3ab7c91dc062cd7)  
 [Water tx by Berserkitty](https://www.deviantart.com/berserkitty/art/Seamless-Cartoon-styled-Water-Texture-743787929)  
 [Waterfall tx by Aurora Graphics](https://old.auroragraphics.net/product_info.php?products_id=1966)  
-[Wooden Support Beam by Cianon](https://sketchfab.com/3d-models/wooden-support-beam-93e44ade0d8548d3afcd5c2ce01203c8)  
+[Wooden Support Beam by Cianon](https://sketchfab.com/3d-models/wooden-support-beam-93e44ade0d8548d3afcd5c2ce01203c8)
 
 # Project progress checklist
 - [x] platform (scene)
@@ -44,6 +44,7 @@ Projekat iz računarske grafike, korišćen skelet sa `https://github.com/matf-r
 - [x] skybox (10. week, cubemaps)
 - [x] a few plants with transparency (9. week, blending)
 - [x] spotlights beneath lanterns (5/6. week, 3rd light source type, spotlight), not working properly yet
+- [x] waterfall	(2+3 week, scene opt.)
 - [ ] poolside rocks (scene, instancing?)
 - [x] boat (3. week, scene)
 - [ ] trees w/ simple canopies on hills (scene)
