@@ -303,6 +303,7 @@ _deps
 
 resources/objects/
 resources/textures/
+workflow
 
 # End of https://www.toptal.com/developers/gitignore/api/c++,cmake,clion,clion+all,clion+iml,c
 

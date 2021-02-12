@@ -30,8 +30,8 @@ unsigned int loadTexture(const char *path);
 unsigned int loadCubeMap(vector<std::string> faces);
 
 // settings
-const unsigned int SCR_WIDTH = 800;
-const unsigned int SCR_HEIGHT = 600;
+const unsigned int SCR_WIDTH = 1600;
+const unsigned int SCR_HEIGHT = 900;
 
 // camera
 float lastX = SCR_WIDTH / 2.0f;
@@ -43,7 +43,6 @@ float deltaTime = 0.0f;
 float lastFrame = 0.0f;
 
 struct ProgramState {
-    glm::vec3 clearColor = glm::vec3(0);
     bool ImGuiEnabled = true;
     Camera camera;
     bool CameraMouseMovementUpdateEnabled = true;
@@ -163,6 +162,7 @@ int main() {
     Shader sourceShader("resources/shaders/light_source.vs", "resources/shaders/light_source.fs");
     Shader discardShader("resources/shaders/discard_shader.vs", "resources/shaders/discard_shader.fs");
     Shader waterfallShader("resources/shaders/waterfall_shader.vs", "resources/shaders/waterfall_shader.fs");
+    Shader rippleShader("resources/shaders/ripple_shader.vs", "resources/shaders/ripple_shader.fs");
 
     // load models
     Model bard("resources/objects/sleepy_bard/sleepy_bard.obj");
@@ -211,15 +211,27 @@ int main() {
             1.0f, -0.5f,  0.0f,  1.0f,  0.0f
     };
 
+    float rippleVertices[] = {
+            // positions         // texture Coords
+            -0.5f, 0.0f, -0.5f, 0.0f,  0.0f,
+            -0.5f, 0.0f,  0.5f, 0.0f,  1.0f,
+             0.5f, 0.0f, -0.5f, 1.0f,  0.0f,
+            -0.5f, 0.0f,  0.5f, 0.0f,  1.0f,
+             0.5f, 0.0f, -0.5f, 1.0f,  0.0f,
+             0.5f, 0.0f,  0.5f, 1.0f,  1.0f
+    };
+
     float waterfallVertices[] = {
             // positions         // texture Coords
-            0.0f,  0.5f,  0.0f,  0.0f,  0.0f,
-            0.0f, -0.5f,  0.0f,  0.0f,  1.0f,
-            1.0f, -0.5f,  0.0f,  1.0f,  1.0f,
+            1.0f,  0.5f,  0.0f,  1.0f,  0.0f, //top right
+            1.0f, -0.5f,  0.0f,  1.0f,  1.0f, //bottom right
+            0.0f, -0.5f,  0.0f,  0.0f,  1.0f, //bottom left
+            0.0f,  0.5f,  0.0f,  0.0f,  0.0f  //top left
+    };
 
-            0.0f,  0.5f,  0.0f,  0.0f,  0.0f,
-            1.0f, -0.5f,  0.0f,  1.0f,  1.0f,
-            1.0f,  0.5f,  0.0f,  1.0f,  0.0f
+    unsigned int waterfallIndices[] = {
+            0, 1, 3,
+            1, 2, 3
     };
 
     float skyboxVertices[] = {
@@ -295,17 +307,40 @@ int main() {
     glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
     glBindVertexArray(0);
 
-    // waterfall VAO
-    unsigned int waterfallVAO, waterfallVBO;
-    glGenVertexArrays(1, &waterfallVAO);
-    glGenBuffers(1, &waterfallVBO);
-    glBindVertexArray(waterfallVAO);
-    glBindBuffer(GL_ARRAY_BUFFER, waterfallVBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(waterfallVertices), waterfallVertices, GL_STATIC_DRAW);
+    // VAO for the ripples
+    unsigned int rippleVAO, rippleVBO;
+    glGenVertexArrays(1, &rippleVAO);
+    glGenBuffers(1, &rippleVBO);
+    glBindVertexArray(rippleVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, rippleVBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(rippleVertices), rippleVertices, GL_STATIC_DRAW);
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)nullptr);
     glEnableVertexAttribArray(1);
     glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
+    glBindVertexArray(0);
+
+    // waterfall VAO
+    unsigned int waterfallVAO, waterfallVBO, waterfallEBO;
+    glGenVertexArrays(1, &waterfallVAO);
+    glGenBuffers(1, &waterfallVBO);
+    glGenBuffers(1, &waterfallEBO);
+
+    glBindVertexArray(waterfallVAO);
+
+    glBindBuffer(GL_ARRAY_BUFFER, waterfallVBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(waterfallVertices), waterfallVertices, GL_STATIC_DRAW);
+
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, waterfallEBO);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(waterfallIndices), waterfallIndices, GL_STATIC_DRAW);
+
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)nullptr);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
+    glEnableVertexAttribArray(1);
+
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+
     glBindVertexArray(0);
 
     // skybox VAO
@@ -323,6 +358,7 @@ int main() {
     unsigned int diffuseMap = loadTexture(FileSystem::getPath("resources/textures/water_dark.png").c_str());
     unsigned int transparentTexture = loadTexture(FileSystem::getPath("resources/textures/grass.png").c_str());
     unsigned int waterfallTexture = loadTexture(FileSystem::getPath("resources/textures/seamless waterfall.jpeg").c_str());
+    unsigned int rippleTexture = loadTexture(FileSystem::getPath("resources/textures/ripple.jpg").c_str());
 
 
     // transparent window locations
@@ -361,7 +397,6 @@ int main() {
 
     vector<glm::vec3> waterfall_tiles
             {
-                    //glm::vec3( -1.0f, 1.0f, 0.7f),
                     glm::vec3( -0.8f, 1.12f, 1.0f),
                     glm::vec3( -0.8f, 1.37f, 1.0f),
                     glm::vec3( -0.8f, 1.62f, 1.0f),
@@ -380,16 +415,16 @@ int main() {
 
         processInput(window);
 
-        glClearColor(programState->clearColor.r, programState->clearColor.g, programState->clearColor.b, 1.0f);
+        glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         objShader.use();
         objShader.setVec3("viewPos", programState->camera.Position);
         objShader.setFloat("material.shininess", 32.0f);
-        objShader.setBool("celShading", false);
-        skyboxShader.setBool("celShading", false);
-        waterShader.setBool("celShading", false);
-        sourceShader.setBool("celShading", false);
+        objShader.setBool("celShading", true);
+        skyboxShader.setBool("celShading", true);
+        waterShader.setBool("celShading", true);
+        sourceShader.setBool("celShading", true);
 
         glm::mat4 projection = glm::perspective(glm::radians(programState->camera.Zoom), (float) SCR_WIDTH / (float) SCR_HEIGHT, 0.1f, 100.0f);
         glm::mat4 view = programState->camera.GetViewMatrix();
@@ -650,7 +685,7 @@ int main() {
                 model = glm::rotate(model, glm::radians(90.0f), (glm::vec3(1.0f, 0.0f, 0.0f)));
             waterfallShader.setMat4("model", model);
 
-            glDrawArrays(GL_TRIANGLES, 0, 6);
+            glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
         }
 
         //waterfall rendering end, start of vegetation rendering
@@ -669,8 +704,23 @@ int main() {
             glDrawArrays(GL_TRIANGLES, 0, 6);
         }
 
+        //vegetation rendering end, start of ripple rendering
 
-        //vegetation rendering end, start of water rendering
+        rippleShader.use();
+        rippleShader.setMat4("projection", projection);
+        rippleShader.setMat4("view", view);
+        rippleShader.setFloat("currentFrame", currentFrame);
+        glBindVertexArray(rippleVAO);
+        glBindTexture(GL_TEXTURE_2D, rippleTexture);
+        model = glm::mat4(1.0f);
+        model = glm::translate(model, glm::vec3(-0.76f, 1.001f, 0.87f));
+        model = glm::scale(model, glm::vec3(programState->tempScale));
+        model = glm::rotate(model, glm::radians(programState->tempRotation), glm::vec3(0,1,0));
+        rippleShader.setMat4("model", model);
+        glDrawArrays(GL_TRIANGLES, 0, 6);
+
+
+        //ripple rendering end, start of water rendering
 
         //essentially unnecessary sorting, might change implementation so it's there just in case
         std::map<float, glm::vec3> sorted;
@@ -681,20 +731,12 @@ int main() {
         }
 
         waterShader.use();
-        waterShader.setInt("material.diffuse", 0);
-        waterShader.setInt("material.specular", 1);
-
-        waterShader.setVec3("light.ambient", 0.2f, 0.2f, 0.2f);
-        waterShader.setVec3("light.diffuse", 0.5f, 0.5f, 0.5f);
-        waterShader.setVec3("light.specular", 1.0f, 1.0f, 1.0f);
-
-        waterShader.setFloat("material.shininess", 32.0f);
-
-        waterShader.setVec3("light.direction", -0.2f, -1.0f, -0.3f);
         waterShader.setVec3("viewPos", programState->camera.Position);
 
         waterShader.setMat4("projection", projection);
         waterShader.setMat4("view", view);
+        waterShader.setFloat("currentFrame", currentFrame);
+
 
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, diffuseMap);
@@ -712,6 +754,7 @@ int main() {
         skyboxShader.use();
         skyboxShader.setInt("skybox", 0);
 
+        glDepthMask(GL_FALSE);
         glDepthFunc(GL_LEQUAL);  // change depth function so depth test passes when values are equal to depth buffer's content
         skyboxShader.use();
         view = glm::mat4(glm::mat3(programState->camera.GetViewMatrix())); // remove translation from the view matrix
@@ -723,10 +766,12 @@ int main() {
         glBindTexture(GL_TEXTURE_CUBE_MAP, cubeMapTexture);
         glDrawArrays(GL_TRIANGLES, 0, 36);
         glBindVertexArray(0);
+        glDepthMask(GL_TRUE);
         glDepthFunc(GL_LESS); // set depth function back to default
 
         if (programState->ImGuiEnabled)
             DrawImGui(programState);
+
 
         glfwSwapBuffers(window);
         glfwPollEvents();
@@ -757,13 +802,13 @@ void processInput(GLFWwindow *window) {
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
 
-    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+    if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS)
         programState->camera.ProcessKeyboard(FORWARD, deltaTime);
-    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
-        programState->camera.ProcessKeyboard(BACKWARD, deltaTime);
-    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
-        programState->camera.ProcessKeyboard(LEFT, deltaTime);
     if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+        programState->camera.ProcessKeyboard(BACKWARD, deltaTime);
+    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+        programState->camera.ProcessKeyboard(LEFT, deltaTime);
+    if (glfwGetKey(window, GLFW_KEY_F) == GLFW_PRESS)
         programState->camera.ProcessKeyboard(RIGHT, deltaTime);
     if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS)
         programState->camera.ChangeSpeed(true);
@@ -818,11 +863,7 @@ void DrawImGui(ProgramState *programState) {
 
 
     {
-        static float f = 0.0f;
         ImGui::Begin("Hello window");
-        ImGui::Text("Hello text");
-        ImGui::SliderFloat("Float slider", &f, 0.0, 1.0);
-        ImGui::ColorEdit3("Background color", (float *) &programState->clearColor);
 
         ImGui::DragFloat3("Temp position", (float*)&programState->tempPosition, 0.01,-20.0, 20.0);
         ImGui::DragFloat("Temp scale", &programState->tempScale, 0.02, 0.02, 128.0);
@@ -857,7 +898,7 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action, int mod
             glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
         }
     }
-    if (key == GLFW_KEY_F && action == GLFW_PRESS) {
+    if (key == GLFW_KEY_G && action == GLFW_PRESS) {
         programState->spotlight = !programState->spotlight;
     }
 }

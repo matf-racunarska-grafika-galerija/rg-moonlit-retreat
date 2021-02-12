@@ -9,11 +9,15 @@ out vec2 TexCoords;
 uniform mat4 model;
 uniform mat4 view;
 uniform mat4 projection;
+uniform float currentFrame;
 
 void main()
 {
     FragPos = vec3(model * vec4(aPos, 1.0));
     TexCoords = aTexCoords;
+
+    TexCoords.x = aTexCoords.x+currentFrame/15;
+    TexCoords.y = aTexCoords.y+currentFrame/15;
 
     gl_Position = projection * view * vec4(FragPos, 1.0);
 }

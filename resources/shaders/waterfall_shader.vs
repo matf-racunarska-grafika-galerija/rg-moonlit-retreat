@@ -14,5 +14,6 @@ void main()
     TexCoords.x = aTexCoords.x;
 
     TexCoords.y = aTexCoords.y - 3*currentFrame;
+    TexCoords.x = aTexCoords.x + sin(currentFrame)/3;
     gl_Position = projection * view * model * vec4(aPos, 1.0);
 }

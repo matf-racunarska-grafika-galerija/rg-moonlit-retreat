@@ -54,13 +54,11 @@ uniform DirLight dirLight;
 uniform PointLight pointLights[NR_POINT_LIGHTS];
 uniform SpotLight spotLights[NR_SPOTLIGHTS];
 uniform Material material;
-uniform bool celShading;
 
 // function prototypes
 vec3 CalcDirLight(DirLight light, vec3 normal, vec3 viewDir, vec3 FragPos);
 vec3 CalcPointLight(PointLight light, vec3 normal, vec3 fragPos, vec3 viewDir);
 vec3 CalcSpotLight(SpotLight light, vec3 normal, vec3 fragPos, vec3 viewDir);
-vec3 celShade(vec3 result);
 
 void main()
 {
@@ -82,8 +80,6 @@ void main()
     // phase 3: spot light
     for(int i = 0; i < NR_SPOTLIGHTS; i++)
         result += CalcSpotLight(spotLights[i], norm, FragPos, viewDir);
-
-    if(celShading) result = celShade(result);
 
     FragColor = vec4(result, 1.0);
 }
@@ -164,42 +160,4 @@ vec3 CalcSpotLight(SpotLight light, vec3 normal, vec3 fragPos, vec3 viewDir)
     specular *= attenuation * intensity;
 
     return (ambient + diffuse + specular);
-}
-
-vec3 celShade(vec3 result){
-
-        if(result.x > 0.9) result.x = 0.9;
-        else if(result.x > 0.8 && result.x < 0.9) result.x = 0.8;
-        else if(result.x > 0.7 && result.x < 0.8) result.x = 0.7;
-        else if(result.x > 0.6 && result.x < 0.7) result.x = 0.6;
-        else if(result.x > 0.5 && result.x < 0.6) result.x = 0.5;
-        else if(result.x > 0.4 && result.x < 0.5) result.x = 0.4;
-        else if(result.x > 0.3 && result.x < 0.4) result.x = 0.3;
-        else if(result.x > 0.2 && result.x < 0.3) result.x = 0.2;
-        else if(result.x > 0.1 && result.x < 0.2) result.x = 0.1;
-        else if(result.x < 0.1) result.x = 0.0;
-
-        if(result.y > 0.9) result.y = 0.9;
-        else if(result.y > 0.8 && result.y < 0.9) result.y = 0.8;
-        else if(result.y > 0.7 && result.y < 0.8) result.y = 0.7;
-        else if(result.y > 0.6 && result.y < 0.7) result.y = 0.6;
-        else if(result.y > 0.5 && result.y < 0.6) result.y = 0.5;
-        else if(result.y > 0.4 && result.y < 0.5) result.y = 0.4;
-        else if(result.y > 0.3 && result.y < 0.4) result.y = 0.3;
-        else if(result.y > 0.2 && result.y < 0.3) result.y = 0.2;
-        else if(result.y > 0.1 && result.y < 0.2) result.y = 0.1;
-        else if(result.y < 0.1) result.y = 0.0;
-
-        if(result.z > 0.9) result.z = 0.9;
-        else if(result.z > 0.8 && result.z < 0.9) result.z = 0.8;
-        else if(result.z > 0.7 && result.z < 0.8) result.z = 0.7;
-        else if(result.z > 0.6 && result.z < 0.7) result.z = 0.6;
-        else if(result.z > 0.5 && result.z < 0.6) result.z = 0.5;
-        else if(result.z > 0.4 && result.z < 0.5) result.z = 0.4;
-        else if(result.z > 0.3 && result.z < 0.4) result.z = 0.3;
-        else if(result.z > 0.2 && result.z < 0.3) result.z = 0.2;
-        else if(result.z > 0.1 && result.z < 0.2) result.z = 0.1;
-        else if(result.z < 0.1) result.z = 0.0;
-
-        return result;
 }
