@@ -15,17 +15,20 @@ void main()
     FragPos = vec3(model * vec4(aPos, 1.0));
 
     vec2 direction;
-    direction.x = FragPos.x + 0.76;
-    direction.y = FragPos.z - 0.87;
+    direction.x = FragPos.x - 0.76;
+    direction.y = FragPos.z + 0.87;
 
-    float distance = length(direction)*1000.4;
+    float distance = length(direction);
 
     TexCoords = aTexCoords;
     TexCoords.x -= 0.5;
     TexCoords.y -= 0.5;
 
-    TexCoords *= currentFrame;
-    while((abs(TexCoords.x))>0.5 || (abs(TexCoords.y)>0.5)) TexCoords/=3.1415926538;
+    float curFr = currentFrame;
+    while(curFr > 0.8) curFr-=0.8;
+
+    TexCoords.x /= curFr*8;
+    TexCoords.y /= curFr*8;
 
     TexCoords.x += 0.5;
     TexCoords.y += 0.5;

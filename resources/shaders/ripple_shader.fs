@@ -15,7 +15,7 @@ void main()
     vec4 temp = texture(texture1, TexCoords);
 
 
-    temp /= 4;
+    temp /= 3;
     temp.w = 1.0;
     FragColor = temp;
 }

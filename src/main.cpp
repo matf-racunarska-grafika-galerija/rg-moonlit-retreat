@@ -685,7 +685,7 @@ int main() {
                 model = glm::rotate(model, glm::radians(90.0f), (glm::vec3(1.0f, 0.0f, 0.0f)));
             waterfallShader.setMat4("model", model);
 
-            glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+            glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr);
         }
 
         //waterfall rendering end, start of vegetation rendering
@@ -722,12 +722,12 @@ int main() {
 
         //ripple rendering end, start of water rendering
 
-        //essentially unnecessary sorting, might change implementation so it's there just in case
+        //essentially unnecessary sorting, might change implementation, so it's there just in case
         std::map<float, glm::vec3> sorted;
-        for (unsigned int i = 0; i < waterSquares.size(); i++)
+        for (auto & waterSquare : waterSquares)
         {
-            float distance = glm::length(programState->camera.Position - waterSquares[i]);
-            sorted[distance] = waterSquares[i];
+            float distance = glm::length(programState->camera.Position - waterSquare);
+            sorted[distance] = waterSquare;
         }
 
         waterShader.use();
@@ -802,13 +802,13 @@ void processInput(GLFWwindow *window) {
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
 
-    if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS)
+    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
         programState->camera.ProcessKeyboard(FORWARD, deltaTime);
-    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
-        programState->camera.ProcessKeyboard(BACKWARD, deltaTime);
     if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+        programState->camera.ProcessKeyboard(BACKWARD, deltaTime);
+    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
         programState->camera.ProcessKeyboard(LEFT, deltaTime);
-    if (glfwGetKey(window, GLFW_KEY_F) == GLFW_PRESS)
+    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
         programState->camera.ProcessKeyboard(RIGHT, deltaTime);
     if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS)
         programState->camera.ChangeSpeed(true);
@@ -898,7 +898,7 @@ void key_callback(GLFWwindow *window, int key, int scancode, int action, int mod
             glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
         }
     }
-    if (key == GLFW_KEY_G && action == GLFW_PRESS) {
+    if (key == GLFW_KEY_F && action == GLFW_PRESS) {
         programState->spotlight = !programState->spotlight;
     }
 }
@@ -912,7 +912,7 @@ unsigned int loadTexture(char const * path)
     unsigned char *data = stbi_load(path, &width, &height, &nrComponents, 0);
     if (data)
     {
-        GLenum format = GL_RED;
+        GLint format = GL_RED;
         if (nrComponents == 1)
             format = GL_RED;
         else if (nrComponents == 3)
@@ -925,7 +925,7 @@ unsigned int loadTexture(char const * path)
         glGenerateMipmap(GL_TEXTURE_2D);
 
 
-        if(nullptr != strstr(path, "grass.png")){
+        if(nullptr != strstr(path, "grass.png") || (nullptr != strstr(path, "ripple.jpg"))){
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
