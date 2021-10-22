@@ -1,6 +1,8 @@
 # moonlit_retreat
 Projekat iz računarske grafike, korišćen skelet sa `https://github.com/matf-racunarska-grafika/project_base`
 
+![](./resources/preview.gif)
+
 # Uputstvo
 1. `git clone https://github.com/Dyslexoid/rg-moonlit-retreat.git`
 2. Resurse preuzeti sa [google drajva](https://drive.google.com/file/d/1rGbAnoB0BnZMuKmRlYqf5VfQY2yeyyYy)
